@@ -86,8 +86,13 @@ export default class ConnectionsManager extends Collection<string, Connection> {
     // create new channel with specified name and set its parent
     let channel
     try {
-      channel = await discord.guilds[0].createChannel(name, 'text')
-      await channel.overwritePermissions(discord.guilds[0].roles.find(role => role.name === '@everyone').id, { VIEW_CHANNEL: false })
+      channel = await discord.guilds[0].createChannel(name, {
+        type: 'text',
+        permissionOverwrites: [{
+          id: discord.guilds[0].roles.find(role => role.name === '@everyone').id,
+          deny: ['VIEW_CHANNEL'],
+        }]
+      })
     } catch (e) {
       log.error(`Channel create failed: ${e}`)
       return
