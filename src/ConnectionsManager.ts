@@ -80,12 +80,18 @@ export default class ConnectionsManager extends Collection<string, Connection> {
     return newEndpoints
   }
 
-  static async createAutomaticDiscordChannel (threadID: string, name: string) {
+  static async createAutomaticDiscordChannel (threadID: string, name: string): Promise<Connection | void> {
     const log = logger.withScope('CM:createAutomaticDiscordChannel')
 
     // create new channel with specified name and set its parent
-    const channel = await discord.guilds[0].createChannel(name, 'text')
-    await channel.overwritePermissions(discord.guilds[0].roles.find(role => role.name === '@everyone').id, { VIEW_CHANNEL: false })
+    let channel
+    try {
+      channel = await discord.guilds[0].createChannel(name, 'text')
+      await channel.overwritePermissions(discord.guilds[0].roles.find(role => role.name === '@everyone').id, { VIEW_CHANNEL: false })
+    } catch (e) {
+      log.error(`Channel create failed: ${e}`)
+      return
+    }
     log.debug(`Channel created, name: ${name}, id: ${channel.id}`)
 
     // set category if it's in the same guild
@@ -103,10 +109,13 @@ export default class ConnectionsManager extends Collection<string, Connection> {
 
   async getWithCreateFallback (threadID: string, name: string) {
     const log = logger.withScope('CM:getWithCreateFallback')
-    let connection = this.getWith(threadID)
+    let connection: Connection | void = this.getWith(threadID)
     if (!connection) {
       if (!config.discord.createChannels) return log.debug(`Channel creation disabled, ignoring. Name: ${name}, id: ${threadID}`)
       connection = await ConnectionsManager.createAutomaticDiscordChannel(threadID, name)
+      if (!connection) {
+        return
+      }
     }
     return connection
   }
